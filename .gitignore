@@ -1,0 +1,7 @@
+settings/
+Debug/
+driverlib/
+targetConfigs
+.ccsproject
+.clangd
+.ccsproject.project
