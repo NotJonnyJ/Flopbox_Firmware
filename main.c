@@ -15,6 +15,8 @@ char char_In;
 #define Slave_Address3 0x030;  // Player Two
 
 
+char string[] = " Hello Kitten \n";
+
 // String of cards in hand
 char playerOneHand[2];
 char playerTwoHand[2];
@@ -54,11 +56,32 @@ void readPlayerOne();
 int sendP1 = 0;
 int sendP2 = 0;
 
+int i;
+char message = 0x77;
+unsigned int position;
+
 int main(void) {
 
     WDTCTL = WDTPW | WDTHOLD;
     I2C_INIT();
     timerInit();
+
+    //UART INIT
+    // Baudrate of 9600
+    UCA1CTLW0 |= UCSWRST;   //SW RST
+
+    UCA1CTLW0 |= UCSSEL__SMCLK;
+
+    UCA1BRW = 6;
+    UCA1MCTLW |= 0x2081;
+
+    P4SEL1 &= ~BIT3;
+    P4SEL0 |= BIT3;
+
+    //P4SEL1 &= ~BIT2;
+    //P4SEL1 |= BIT2;
+    //End UART Setup
+
 
     P4DIR &= ~BIT4;
     P4REN |= BIT4;
@@ -77,6 +100,7 @@ int main(void) {
 
     PM5CTL0 &= ~LOCKLPM5;
     __delay_cycles(1000);
+    UCA1CTLW0 &= ~UCSWRST;
     UCB0CTLW0 &= ~UCSWRST;
     __delay_cycles(1000);
 
@@ -90,6 +114,9 @@ int main(void) {
     P4IFG &= ~BIT4;
     P4IE |= BIT4;
 
+    UCA1IE = UCRXIE;
+
+
     TB0CCTL0 &= ~CCIFG;
     TB0CCTL0 |= CCIE;
 
@@ -98,10 +125,22 @@ int main(void) {
 
     __enable_interrupt();
 
+    //-----------------------------------------------------------------
+    //                      MAIN WHILE LOOP
+    //-----------------------------------------------------------------
     while (1) {
-        readPlayerOne();
-        readPlayerTwo();
-        __delay_cycles(10000);
+        //readPlayerOne();
+        //readPlayerTwo();
+
+
+        
+        for (i=0;i<sizeof(string);i++){
+            while (!(UCA1IFG & UCTXIFG));  // wait until ready
+            UCA1TXBUF = string[i];
+        }
+        
+        
+        for(i=0; i<3000; i++){}
 
     }
     return 0;
@@ -251,8 +290,22 @@ __interrupt void ISR_TB0_Overflow(void) {
     TB0CCTL0 &= ~CCIFG;
 
 }
-//-------------------------END_ADC_ISR----------------------------------
+//-------------------------END_TIMER_ISR----------------------------------
 
+//-------------------------------------------------------------------------------
+// UART Interrupts
+//-------------------------------------------------------------------------------
+#pragma vector = EUSCI_A1_VECTOR
+__interrupt void EUSCI_A1_RX_ISR(void) {
+    
+    if (UCA1RXBUF == 't'){
+        P1OUT ^= BIT0;
+    }
+    
+    
+
+}
+//-------------------------END_UART_ISR----------------------------------
 
 
 
