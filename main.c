@@ -2,13 +2,24 @@
 //  RFID Poker Table
 //  6/25/2024
 //  Master Controller 
-
+#include <msp430.h>
 #include "msp430fr2355.h"
 #include <msp430.h> 
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
+
+
+typedef struct {
+    uint8_t sync_byte_1;
+    uint8_t sync_byte_2;
+    uint8_t sync_byte_3;
+    uint8_t command;
+    uint8_t data[3];
+    uint8_t checksum;
+} UART_Packet;
+
 
 char char_In;
 #define Slave_Address1 0x010; //Player one
@@ -21,10 +32,9 @@ char string[] = " Hello Kitten \n";
 char playerOneHand[2];
 char playerTwoHand[2];
 
-
 char commandPacket[] = {0x00, 0x00};
 
-char setPacket[] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+char setPacket[] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06};
 
 int greenFlag = 0;
 int blueFlag  = 0;
@@ -56,7 +66,7 @@ void readPlayerOne();
 int sendP1 = 0;
 int sendP2 = 0;
 
-int i;
+int i, j;
 char message = 0x77;
 unsigned int position;
 
@@ -125,6 +135,27 @@ int main(void) {
 
     __enable_interrupt();
 
+    UART_Packet pkt;
+
+    pkt.sync_byte_1 = 0x01;
+    pkt.sync_byte_2 = 0x02;
+    pkt.sync_byte_3 = 0x03;
+    pkt.command = 0x10;
+
+    playerOneHand[0] = 0x36;
+    playerOneHand[1] = 0x21;
+    playerTwoHand[0] = 0x20; 
+    playerTwoHand[1] = 0x40;
+    
+    pkt.data[0] = playerOneHand[0];
+    pkt.data[1] = playerOneHand[1];
+    pkt.data[2] = playerTwoHand[0];
+    pkt.data[4] = playerTwoHand[1];
+
+    uint8_t *bytes = (uint8_t*)&pkt;
+
+    
+
     //-----------------------------------------------------------------
     //                      MAIN WHILE LOOP
     //-----------------------------------------------------------------
@@ -134,9 +165,10 @@ int main(void) {
 
 
         
-        for (i=0;i<sizeof(string);i++){
+        for (i=0;i<sizeof(UART_Packet);i++){
             while (!(UCA1IFG & UCTXIFG));  // wait until ready
-            UCA1TXBUF = string[i];
+            UCA1TXBUF = bytes[i];
+            for(j=0; j<30000; j++){}
         }
         
         
@@ -255,29 +287,6 @@ __interrupt void EUSCI_B0_I2C_ISR(void) {
 
         break;
     }
-}
-
-
-// BUTTON PORTS???
-// NEEDED????
-// IDK ILL ASK TULLY
-
-#pragma vector = PORT4_VECTOR
-__interrupt void ISR_Port4_LSN(void){
-    greenFlag = 1;
-    P4IFG &= ~BIT4;
-}
-
-#pragma vector = PORT3_VECTOR
-__interrupt void ISR_Port3_BIT1(void){
-    yellowFlag = 1;
-    P3IFG &= ~BIT1;
-}
-
-#pragma vector = PORT2_VECTOR
-__interrupt void ISR_Port2_BIT5(void){
-    blueFlag = 1;
-    P2IFG &= ~BIT5;
 }
 
 
