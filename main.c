@@ -12,21 +12,33 @@
 
 
 typedef struct {
-    uint8_t sync_byte_1;
-    uint8_t sync_byte_2;
-    uint8_t sync_byte_3;
-    uint8_t command;
-    uint8_t data[3];
-    uint8_t checksum;
+    uint8_t startByte;
+    uint8_t length;
+    uint8_t p1[2];
+    uint8_t p2[2];
+    uint8_t p3[2];
+    uint8_t p4[2];
+    uint8_t p5[2];
+    uint8_t p6[2];
+    uint8_t p7[2];
+    uint8_t p8[2];
+    uint8_t p9[2];
+
+    uint8_t endByte;
+
 } UART_Packet;
 
+
+
+
+int position; 
 
 char char_In;
 #define Slave_Address1 0x010; //Player one
 #define Slave_Address3 0x030;  // Player Two
 
 
-char string[] = " Hello Kitten \n";
+char string[] = " Hello Kitten ";
 
 // String of cards in hand
 char playerOneHand[2];
@@ -34,12 +46,7 @@ char playerTwoHand[2];
 
 char commandPacket[] = {0x00, 0x00};
 
-char setPacket[] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06};
-
-int greenFlag = 0;
-int blueFlag  = 0;
-int yellowFlag  = 0;
-
+char setPacket[] = {0xAA, 0x44, 0x45, 0x46, 0x47, 0x48, 0x49};
 
 // Hex values sent from slave
 int cardOne;
@@ -68,7 +75,7 @@ int sendP2 = 0;
 
 int i, j;
 char message = 0x77;
-unsigned int position;
+int position;
 
 int main(void) {
 
@@ -135,28 +142,50 @@ int main(void) {
 
     __enable_interrupt();
 
-    UART_Packet pkt;
 
-    pkt.sync_byte_1 = 0x01;
-    pkt.sync_byte_2 = 0x02;
-    pkt.sync_byte_3 = 0x03;
-    pkt.command = 0x10;
-
-    playerOneHand[0] = 0x36;
-    playerOneHand[1] = 0x21;
-    playerTwoHand[0] = 0x20; 
-    playerTwoHand[1] = 0x40;
-    
-    pkt.data[0] = playerOneHand[0];
-    pkt.data[1] = playerOneHand[1];
-    pkt.data[2] = playerTwoHand[0];
-    pkt.data[4] = playerTwoHand[1];
-
-    uint8_t *bytes = (uint8_t*)&pkt;
+    // Diamonds, Spade, Heart, Club
+    //  0X44      0X53   0X48   0X43    
 
     
+    UART_Packet SystemVariables;
 
-    //-----------------------------------------------------------------
+    SystemVariables.startByte = 0xAA;
+    SystemVariables.length = sizeof(SystemVariables);
+
+    SystemVariables.p1[0] = 0x44;
+    SystemVariables.p1[1] = 0x71;
+
+    SystemVariables.p2[0] = 0X53;
+    SystemVariables.p2[1] = 0x73;
+
+    SystemVariables.p3[0] = 0X48;
+    SystemVariables.p3[1] = 0x77;
+
+    SystemVariables.p4[0] = 0x44;
+    SystemVariables.p4[1] = 0x75;
+
+    SystemVariables.p5[0] = 0X53;
+    SystemVariables.p5[1] = 0x79;
+
+    SystemVariables.p6[0] = 0X48;
+    SystemVariables.p6[1] = 0x7A;
+
+    SystemVariables.p7[0] = 0x44;
+    SystemVariables.p7[1] = 0x73;
+
+    SystemVariables.p8[0] = 0X53;
+    SystemVariables.p8[1] = 0x71;
+
+    SystemVariables.p9[0] = 0X48;
+    SystemVariables.p9[1] = 0x78;
+
+    SystemVariables.endByte = 0xBB;
+
+
+    unsigned char *sysvarsPtr = (unsigned char *)&SystemVariables;
+    
+
+    //----------------------------------------------------------------
     //                      MAIN WHILE LOOP
     //-----------------------------------------------------------------
     while (1) {
@@ -165,9 +194,9 @@ int main(void) {
 
 
         
-        for (i=0;i<sizeof(UART_Packet);i++){
+        for (position=0;position<sizeof(SystemVariables);position++){
             while (!(UCA1IFG & UCTXIFG));  // wait until ready
-            UCA1TXBUF = bytes[i];
+            UCA1TXBUF = sysvarsPtr[position];
             for(j=0; j<30000; j++){}
         }
         
